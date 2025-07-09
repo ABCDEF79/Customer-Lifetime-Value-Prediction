@@ -14,3 +14,10 @@ This project predicts the future value of a customer using historical retail tra
 
 ## Project Structure
 
+## How to Run
+
+1. Clone this repo
+2. Place dataset in `/data`
+3. Run the notebook in `/notebooks`
+4. Explore predictions in `clv_results.csv`
+
