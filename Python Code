@@ -1,0 +1,58 @@
+# notebooks/clv_prediction.ipynb
+
+# 1. Import Libraries
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+# 2. Load Data
+df = pd.read_excel("../data/online_retail_II.xlsx", sheet_name='Year 2010-2011')
+df.head()
+
+# 3. Data Cleaning
+df = df.dropna(subset=['Customer ID'])
+df = df[df['Quantity'] > 0]
+df = df[df['Price'] > 0]
+
+# 4. Feature Engineering - RFM
+df['TotalPrice'] = df['Quantity'] * df['Price']
+
+snapshot_date = df['InvoiceDate'].max() + pd.DateOffset(days=1)
+rfm = df.groupby(['Customer ID']).agg({
+    'InvoiceDate': lambda x: (snapshot_date - x.max()).days,
+    'Invoice': 'nunique',
+    'TotalPrice': 'sum'
+}).reset_index()
+
+rfm.columns = ['CustomerID', 'Recency', 'Frequency', 'Monetary']
+
+# 5. Build Simple Regression Model
+X = rfm[['Recency', 'Frequency']]
+y = rfm['Monetary']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+y_pred = lr.predict(X_test)
+
+print("R^2 Score:", r2_score(y_test, y_pred))
+print("RMSE:", np.sqrt(mean_squared_error(y_test, y_pred)))
+
+# 6. Predict CLV for new customers
+rfm['Predicted_Monetary'] = lr.predict(rfm[['Recency', 'Frequency']])
+
+# 7. Save results
+rfm.to_csv("../data/clv_results.csv", index=False)
+
+# Plot
+sns.scatterplot(x=y_test, y=y_pred)
+plt.xlabel("Actual")
+plt.ylabel("Predicted")
+plt.title("Actual vs Predicted CLV")
+plt.show()
